@@ -1,32 +1,45 @@
-name: Deploy to Staging
+# File: .github/workflows/deploy-staging.yml
+
+name: "Deploy to ECS (Staging)"
 
 on:
   push:
     branches:
-      - master
-
+      - "staging"
 jobs:
-  deploy:
-    # Do not deploy in the main repository, only in user projects
-    if: github.repository_owner != 'fastapi'
-    runs-on:
-      - self-hosted
-      - staging
-    env:
-      ENVIRONMENT: staging
-      DOMAIN: ${{ secrets.DOMAIN_STAGING }}
-      STACK_NAME: ${{ secrets.STACK_NAME_STAGING }}
-      SECRET_KEY: ${{ secrets.SECRET_KEY }}
-      FIRST_SUPERUSER: ${{ secrets.FIRST_SUPERUSER }}
-      FIRST_SUPERUSER_PASSWORD: ${{ secrets.FIRST_SUPERUSER_PASSWORD }}
-      SMTP_HOST: ${{ secrets.SMTP_HOST }}
-      SMTP_USER: ${{ secrets.SMTP_USER }}
-      SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-      EMAILS_FROM_EMAIL: ${{ secrets.EMAILS_FROM_EMAIL }}
-      POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
-      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - run: docker compose -f docker-compose.yml --project-name ${{ secrets.STACK_NAME_STAGING }} build
-      - run: docker compose -f docker-compose.yml --project-name ${{ secrets.STACK_NAME_STAGING }} up -d
+  deploy-backend:
+    name: "Deploy Backend to ECS"
+    uses: ./.github/workflows/deploy-ecs.yml
+    with:
+      aws-region: ap-northeast-1
+      cluster: nhunght-cluster
+      service: nhunght-backend-service
+      task-definition-file: ecs/task-denification-backend-staging.json
+      container-name: backend
+      image-repo-name: ecs-fargate/backend
+      ecr-repo-url: 715841341879.dkr.ecr.ap-northeast-1.amazonaws.com
+      context: backend
+      deploy: true
+      env: staging
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.STG_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.STG_AWS_SECRET_ACCESS_KEY }}
+  
+  deploy-frontend:
+    name: "Deploy Frontend to ECS (Staging)"
+    needs: deploy-backend
+    uses: ./.github/workflows/deploy-ecs.yml
+    with:
+      aws-region: ap-northeast-1
+      cluster: nhunght-cluster
+      service: nhunght-frontend-service
+      task-definition-file: ecs/task-denification-frontend-staging.json
+      container-name: frontend
+      image-repo-name: ecs-fargate/frontend
+      ecr-repo-url: 715841341879.dkr.ecr.ap-northeast-1.amazonaws.com
+      context: frontend
+      deploy: true
+      env: staging
+    secrets:
+      AWS_ACCESS_KEY_ID: ${{ secrets.STG_AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.STG_AWS_SECRET_ACCESS_KEY }}

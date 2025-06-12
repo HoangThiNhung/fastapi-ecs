@@ -29,7 +29,10 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 ENV PYTHONPATH=/app
 
+COPY .env /app/
 COPY ./scripts /app/scripts
+
+RUN chmod +x /app/scripts/prestart.sh
 
 COPY ./pyproject.toml ./uv.lock ./alembic.ini /app/
 
@@ -40,4 +43,8 @@ COPY ./app /app/app
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync
 
-CMD ["fastapi", "run", "--workers", "4", "app/main.py"]
+ARG PORT=8000
+ENV PORT=${PORT}
+EXPOSE ${PORT}
+
+CMD sh -c "uvicorn app.main:app --host 0.0.0.0 --port \$PORT --workers 4"
